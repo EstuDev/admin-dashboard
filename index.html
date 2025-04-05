@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; display: flex; min-height: 100vh; background: #f4f7fa; color: #1f2937; transition: background 0.3s, color 0.3s; }
+    body.dark { background: #111827; color: #f9fafb; }
+    .sidebar {
+      width: 250px; background: #1f2937; color: white; padding: 20px; transition: width 0.3s; overflow: hidden;
+    }
+    .sidebar h2 { margin-bottom: 30px; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
+    .sidebar ul { list-style: none; }
+    .sidebar ul li {
+      margin-bottom: 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 1rem; padding: 10px; border-radius: 8px; transition: background 0.3s;
+    }
+    .sidebar ul li:hover {
+      background-color: #374151;
+    }
+    .sidebar.shrink { width: 80px; }
+    .sidebar.shrink h2 span, .sidebar.shrink li span { display: none; }
+
+    .main {
+      flex: 1; padding: 20px;
+    }
+    .top-bar {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+    }
+    .cards {
+      display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 30px;
+    }
+    .card {
+      background: white; padding: 20px; border-radius: 12px; flex: 1 1 200px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    body.dark .card, body.dark .data-table, body.dark .chart {
+      background: #1f2937; color: #f9fafb; box-shadow: 0 2px 10px rgba(255,255,255,0.05);
+    }
+    .data-table, .chart {
+      background: white; padding: 20px; border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
+    body.dark table, body.dark th, body.dark td {
+      border-color: #374151;
+    }
+    .mode-toggle {
+      background: none; border: none; color: inherit; font-size: 1.2rem; cursor: pointer;
+    }
+    .chart canvas {
+      max-width: 300px; max-height: 300px; margin: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar" id="sidebar">
+    <h2><i class='bx bx-cog'></i> <span>Dashboard</span></h2>
+    <ul>
+      <li><i class='bx bx-home-alt'></i> <span>Home</span></li>
+    </ul>
+  </div>
+  <div class="main">
+    <div class="top-bar">
+      <button onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+      <h1>Admin Dashboard</h1>
+      <button class="mode-toggle" onclick="toggleDarkMode()">
+        <i class="fas fa-moon"></i>
+      </button>
+    </div>
+
+    <div class="cards" id="cards">
+      <!-- Cards will be inserted here -->
+    </div>
+
+    <div class="data-table">
+      <h2>Data Table</h2>
+      <table id="data-table" class="display">
+        <thead>
+          <tr><th>Desa</th><th>Nama BUM Desa</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <!-- Data will be inserted here -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="chart">
+      <h2>Diagram</h2>
+      <canvas id="statusChart"></canvas>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script>
+    const toggleSidebar = () => {
+      document.getElementById('sidebar').classList.toggle('shrink');
+    }
+
+    const toggleDarkMode = () => {
+      document.body.classList.toggle('dark');
+    }
+
+    fetch('https://script.google.com/macros/s/AKfycbyG-hJGNH8NYmN2rXR0YMOvqnqxc1HUvR6XlM1AgqW3-3kIFTbk6Ps1kfRnE1qo6GUEqw/exec')
+      .then(res => res.json())
+      .then(data => {
+        const cardsContainer = document.getElementById('cards');
+        const tableBody = document.querySelector('#data-table tbody');
+        const categoryCount = {};
+
+        data.forEach(item => {
+          const desa = item['Desa'] || item[0];
+          const nama = item['Nama BUM Desa'] || item[1];
+          const status = item['Status'] || item[2];
+
+          tableBody.innerHTML += `<tr><td>${desa}</td><td>${nama}</td><td>${status}</td>`;
+
+          categoryCount[status] = (categoryCount[status] || 0) + 1;
+        });
+
+        $('#data-table').DataTable();
+
+        for (let category in categoryCount) {
+          cardsContainer.innerHTML += `<div class="card"><h3>${category}</h3><p>${categoryCount[category]} data</p></div>`;
+        }
+
+        new Chart(document.getElementById('statusChart'), {
+          type: 'pie',
+          data: {
+            labels: Object.keys(categoryCount),
+            datasets: [{
+              label: 'Jumlah Status',
+              data: Object.values(categoryCount),
+              backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1']
+            }]
+          },
+          options: {
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  boxWidth: 12,
+                  padding: 15
+                }
+              }
+            }
+          }
+        });
+      })
+      .catch(err => console.error('Data Fetch Error:', err));
+  </script>
+</body>
+</html>
